@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>봄학기 연애 시뮬레이터</title>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#fdeef0; --panel:#ffffff; --ink:#2a2036; --muted:#7d7189; --line:#ecd3da;
+  --pri:#d6456f; --a:#7c5cd6; --b:#e0862f; --c:#2a9d8f;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#1a1424; --panel:#261d35; --ink:#f4eef9; --muted:#a898bb; --line:#3d3052;
+    --pri:#ff7aa2; --a:#a58bff; --b:#ffb066; --c:#5fd3c4;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1a1424; --panel:#261d35; --ink:#f4eef9; --muted:#a898bb; --line:#3d3052;
+  --pri:#ff7aa2; --a:#a58bff; --b:#ffb066; --c:#5fd3c4;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+  font-family:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  display:flex;justify-content:center;padding:20px 14px}
+#app{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:18px;padding:18px}
+h1{margin:0 0 8px;font-size:1.8rem;color:var(--pri)}
+p{line-height:1.7;margin:0 0 10px}
+.muted{color:var(--muted);font-size:.95rem}
+input{font:inherit;width:100%;padding:12px;border-radius:12px;border:2px solid var(--line);
+  background:var(--bg);color:var(--ink);margin:8px 0 14px}
+input:focus-visible,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.btn{width:100%;padding:13px 16px;border-radius:14px;border:2px solid var(--pri);
+  background:var(--pri);color:#fff;font-size:1.05rem}
+.btn:hover{filter:brightness(1.08)}
+.choice{display:block;width:100%;text-align:left;padding:13px 16px;margin-top:8px;border-radius:14px;
+  border:2px solid var(--line);background:var(--bg);color:var(--ink);font-size:1rem}
+.choice:hover{border-color:var(--pri)}
+.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.meter{font-size:.85rem}
+.bar{height:8px;border-radius:99px;background:var(--line);margin-top:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;transition:width .4s}
+.stage{display:flex;gap:14px;align-items:flex-start}
+.avatar{flex:none;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;
+  font-size:1.6rem;color:#fff;font-weight:700}
+.name{font-weight:700;margin-bottom:4px}
+.day{font-size:.85rem;color:var(--muted);text-align:right}
+.fade{animation:fade .35s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const CH={
+  a:{n:'서윤',c:'var(--a)',role:'도서관에서 자주 마주치는 조용한 선배'},
+  b:{n:'지호',c:'var(--b)',role:'밴드 동아리의 활발한 동기'},
+  c:{n:'하린',c:'var(--c)',role:'카페에서 일하는 다정한 후배'}
+};
+const SCENES=[
+ {day:'3월 · 개강 첫날',who:'a',text:'도서관 마지막 자리에 앉으려는데 누군가 먼저 책을 내려놓았다. 서윤이 잠깐 나를 보더니 옆자리를 손으로 가리킨다. "…여기 앉아도 돼요."',
+  ch:[{t:'고맙다며 옆자리에 앉는다',fx:{a:2}},{t:'방해될까 봐 다른 자리를 찾는다',fx:{a:-1}},{t:'같이 공부하자고 먼저 말을 건다',fx:{a:3,c:-1}}]},
+ {day:'3월 · 동아리 박람회',who:'b',text:'밴드 부스 앞에서 지호가 기타를 들고 손짓한다. "거기 너! 노래 잘하게 생겼는데, 한 소절만 불러 봐!"',
+  ch:[{t:'용기 내서 한 소절 부른다',fx:{b:3}},{t:'웃으며 손사래 친다',fx:{b:1}},{t:'대신 기타 소리가 좋다고 칭찬한다',fx:{b:2,a:1}}]},
+ {day:'4월 · 비 오는 날',who:'c',text:'우산 없이 카페 앞에서 서성이는데 하린이 문을 열고 나온다. "안 들어오세요? 따뜻한 거 한 잔 드릴게요."',
+  ch:[{t:'못 이기는 척 들어간다',fx:{c:2}},{t:'괜찮다고 사양하고 뛰어간다',fx:{c:-1}},{t:'음료값을 꼭 내겠다고 한다',fx:{c:3,b:-1}}]},
+ {day:'5월 · 중간고사 전날',who:'a',text:'새벽 도서관. 서윤이 말없이 필기 노트를 내 앞으로 밀어 준다. 첫 장에 작게 적혀 있다. "같이 붙자."',
+  ch:[{t:'노트를 소중히 받고 밤새 함께 공부한다',fx:{a:3}},{t:'너무 미안해서 돌려준다',fx:{a:-1}},{t:'대신 커피를 사 오겠다고 한다',fx:{a:2,c:1}}]},
+ {day:'5월 · 축제 무대',who:'b',text:'축제 당일, 보컬이 갑자기 아파서 무대에 서지 못한다. 지호가 내 어깨를 붙잡는다. "네가 해 줄 수 있지? 나 믿고."',
+  ch:[{t:'지호를 믿고 무대에 오른다',fx:{b:3}},{t:'대타로 다른 사람을 추천한다',fx:{b:-1}},{t:'같이 듀엣으로 하자고 제안한다',fx:{b:3,a:1}}]},
+ {day:'6월 · 학기 마지막 날',who:'c',text:'해가 지는 캠퍼스. 하린이 카페 앞에서 기다리고 있다. "방학하면 자주 못 보잖아요. …오늘 같이 걸을래요?"',
+  ch:[{t:'"좋아, 끝까지 데려다줄게."',fx:{c:3}},{t:'"방학에도 연락하자."',fx:{c:2}},{t:'"미안, 선약이 있어."',fx:{c:-2}}]}
+];
+const ENDINGS={
+ a:'서윤과 나란히 앉아 책장을 넘기는 여름이 이어졌다. 말수는 적어도 서로의 침묵이 편안한 사이가 되었다.',
+ b:'지호와 함께 만든 노래가 동아리방 밖까지 울려 퍼졌다. 시끌벅적한 날들 속에서 서로의 첫 관객이 되었다.',
+ c:'하린이 건네는 따뜻한 한 잔처럼, 우리의 하루하루는 천천히 데워졌다. 방학이 끝나도 자리는 그대로였다.',
+ solo:'누구의 마음도 크게 움직이지 못한 채 학기가 끝났다. 하지만 좋은 친구들이 생겼고, 다음 학기는 아직 남아 있다.'
+};
+const app=document.getElementById('app');
+let name,idx,aff;
+
+function meters(){
+  return '<div class="card meters">'+Object.keys(CH).map(k=>{
+    const v=Math.max(0,Math.min(10,aff[k]));
+    return `<div class="meter"><b>${CH[k].n}</b> ♥ ${v}<div class="bar"><i style="width:${v*10}%;background:${CH[k].c}"></i></div></div>`;
+  }).join('')+'</div>';
+}
+
+function start(){
+  app.innerHTML=`<div class="card fade"><h1>봄학기 연애 시뮬레이터</h1>
+  <p>새 학기, 세 사람과의 만남이 시작됩니다. 선택에 따라 호감도가 달라지고, 학기 말에 결말이 정해져요.</p>
+  <label for="nm" class="muted">이름을 입력하세요</label>
+  <input id="nm" maxlength="8" placeholder="이름" autocomplete="off">
+  <button class="btn" id="go">학기 시작</button></div>`;
+  const nm=document.getElementById('nm');
+  const go=()=>{name=nm.value.trim()||'나';idx=0;aff={a:0,b:0,c:0};scene()};
+  document.getElementById('go').onclick=go;
+  nm.addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+  nm.focus();
+}
+
+function scene(){
+  const s=SCENES[idx],c=CH[s.who];
+  app.innerHTML=meters()+`<div class="card fade">
+    <div class="day">${s.day} (${idx+1}/${SCENES.length})</div>
+    <div class="stage"><div class="avatar" style="background:${c.c}">${c.n[0]}</div>
+    <div><div class="name">${c.n} <span class="muted">${c.role}</span></div>
+    <p>${s.text}</p></div></div>
+    <div id="opts"></div></div>`;
+  const opts=document.getElementById('opts');
+  s.ch.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='choice';b.textContent=o.t;
+    b.onclick=()=>{
+      for(const k in o.fx)aff[k]+=o.fx[k];
+      idx++;idx<SCENES.length?scene():ending();
+    };
+    opts.appendChild(b);
+  });
+}
+
+function ending(){
+  const top=Object.keys(aff).sort((x,y)=>aff[y]-aff[x]);
+  const win=aff[top[0]]>=7&&aff[top[0]]>aff[top[1]]?top[0]:'solo';
+  const title=win==='solo'?'친구들과 함께한 학기':`${CH[win].n}와(과)의 엔딩`;
+  app.innerHTML=meters()+`<div class="card fade"><h1>${title}</h1>
+    <p><b>${name}</b>의 학기는 이렇게 끝났습니다.</p>
+    <p>${ENDINGS[win]}</p>
+    <p class="muted">${win==='solo'?'한 사람에게 7 이상의 호감도를 쌓으면 연애 엔딩을 볼 수 있어요.':'다른 선택을 하면 다른 결말을 만날 수 있어요.'}</p>
+    <button class="btn" id="again">다시 하기</button></div>`;
+  document.getElementById('again').onclick=start;
+}
+start();
+</script>
+</body>
+</html>
